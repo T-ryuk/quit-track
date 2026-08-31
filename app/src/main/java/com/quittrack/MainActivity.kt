@@ -218,7 +218,12 @@ fun SmokeDialog(dismiss:()->Unit, save:(String,String,Int)->Unit){
                 RadioButton(source==it,{source=it});Text(it)}}
             OutlinedTextField(context,{context=it},label={Text("Context (optional)")})
             Text("Craving: ${if(intensity==0)"Not rated" else "$intensity/10"}")
-            Slider(intensity.toFloat(),{intensity=it.toInt()},0f..10f,steps=9)
+            Slider(
+    value = intensity.toFloat(),
+    onValueChange = { intensity = it.toInt() },
+    valueRange = 0f..10f,
+    steps = 9
+)
         }},confirmButton={TextButton({save(source,context,intensity)}){Text("Save")}},
         dismissButton={TextButton(dismiss){Text("Cancel")}})
 }
@@ -229,7 +234,12 @@ fun CravingDialog(dismiss:()->Unit, save:(Int,String)->Unit){
     AlertDialog(onDismissRequest=dismiss,title={Text("I have a craving")},text={
         Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
             Text("Intensity: $intensity/10")
-            Slider(intensity.toFloat(),{intensity=it.toInt()},1f..10f,steps=8)
+            Slider(
+    value = intensity.toFloat(),
+    onValueChange = { intensity = it.toInt() },
+    valueRange = 1f..10f,
+    steps = 8
+)
             OutlinedTextField(context,{context=it},label={Text("Situation/context")})
         }},confirmButton={TextButton({save(intensity,context)}){Text("Save")}},
         dismissButton={TextButton(dismiss){Text("Cancel")}})
