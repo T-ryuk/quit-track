@@ -385,11 +385,9 @@ fun TodayScreen(
     onCraving: () -> Unit,
     onEntries: () -> Unit,
     onPlan: () -> Unit,
-    onEmergency: () -> Unit
+    onEmergency: () -> Unit,
+    onSaveReview: () -> Unit
 ) {
-    val target = 4
-    val progress = (smoked.toFloat() / target.toFloat()).coerceIn(0f, 1f)
-
     LazyColumn(
         modifier = m.fillMaxSize(),
         contentPadding = PaddingValues(
@@ -441,9 +439,7 @@ fun TodayScreen(
         }
 
         item {
-            AppCard(
-                modifier = Modifier
-            ) {
+            AppCard {
                 Column(
                     modifier = Modifier.padding(18.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -492,25 +488,8 @@ fun TodayScreen(
                             )
 
                             Text(
-                                "of $target target",
+                                "cigarettes",
                                 color = TextMuted
-                            )
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .size(82.dp)
-                                .border(
-                                    width = 8.dp,
-                                    color = QuitGreenLight,
-                                    shape = CircleShape
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                "${(progress * 100).toInt()}%",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 20.sp
                             )
                         }
 
@@ -540,44 +519,20 @@ fun TodayScreen(
         }
 
         item {
-            AppCard {
-                Column(
-                    modifier = Modifier.padding(18.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Text(
-                        "Today's progress",
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        repeat(target) { index ->
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(12.dp)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(
-                                        if (index < smoked)
-                                            QuitGreen
-                                        else
-                                            BorderLight
-                                    )
-                            )
-                        }
-                    }
-
-                    Text(
-                        "$smoked of $target cigarettes used",
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.End,
-                        color = TextMuted,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
+            Button(
+                onClick = onSaveReview,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = QuitGreen
+                )
+            ) {
+                Text(
+                    "✓  Save today's review",
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
 
