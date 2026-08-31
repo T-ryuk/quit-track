@@ -258,6 +258,7 @@ fun QuitTrackApp(
                     onEntries = { screen = "Entries" },
                     onPlan = { screen = "Plan" },
                     onEmergency = { screen = "Emergency" }
+                    onSaveReview = { }
                 )
 
                 "Plan" -> PlanScreen(
