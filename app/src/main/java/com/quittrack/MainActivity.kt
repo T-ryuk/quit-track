@@ -1072,14 +1072,39 @@ fun SettingsScreen(
     var showReset by remember { mutableStateOf(false) }
     var showFontSize by remember { mutableStateOf(false) }
     var showTheme by remember { mutableStateOf(false) }
+    var showObjective by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
+    val prefs = context.getSharedPreferences(
+        "quit_track",
+        android.content.Context.MODE_PRIVATE
+    )
+
+    var objective by remember {
+        mutableStateOf(
+            prefs.getString("objective", "Reduce gradually")
+                ?: "Reduce gradually"
+        )
+    }
+
+    var cigarettesPerDay by remember {
+        mutableStateOf(
+            prefs.getInt("cigarettesPerDay", 8).toString()
+        )
+    }
+
+    var morningCigarettes by remember {
+        mutableStateOf(
+            prefs.getInt("morningCigarettes", 3).toString()
+        )
+    }
+
+    var savedMessage by remember { mutableStateOf(false) }
 
     val exportLauncher =
         rememberLauncherForActivityResult(
             ActivityResultContracts.CreateDocument("application/json")
         ) { uri ->
-
             if (uri != null) {
                 val root = JSONObject()
 
@@ -1111,7 +1136,6 @@ fun SettingsScreen(
         rememberLauncherForActivityResult(
             ActivityResultContracts.OpenDocument()
         ) { uri ->
-
             if (uri != null) {
                 try {
                     val json = context.contentResolver
@@ -1174,6 +1198,98 @@ fun SettingsScreen(
                 fontWeight = FontWeight.Bold,
                 color = QuitGreen
             )
+        }
+
+        item {
+            SettingsSectionTitle("GOALS & TARGETS")
+
+            AppCard {
+                Column {
+
+                    SettingsRow(
+                        icon = "🎯",
+                        title = "Objective",
+                        subtitle = objective,
+                        onClick = { showObjective = true }
+                    )
+
+                    Divider()
+
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            "Daily cigarette limit",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+
+                        Text(
+                            "Maximum cigarettes permitted per day",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextMuted
+                        )
+
+                        OutlinedTextField(
+                            value = cigarettesPerDay,
+                            onValueChange = {
+                                if (it.length <= 3 && it.all { c -> c.isDigit() }) {
+                                    cigarettesPerDay = it
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            label = { Text("Cigarettes per day") }
+                        )
+
+                        OutlinedTextField(
+                            value = morningCigarettes,
+                            onValueChange = {
+                                if (it.length <= 2 && it.all { c -> c.isDigit() }) {
+                                    morningCigarettes = it
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            label = { Text("Morning cigarettes") }
+                        )
+
+                        Button(
+                            onClick = {
+                                val daily = cigarettesPerDay.toIntOrNull()
+                                    ?.coerceIn(0, 100) ?: 8
+
+                                val morning = morningCigarettes.toIntOrNull()
+                                    ?.coerceIn(0, 50) ?: 3
+
+                                cigarettesPerDay = daily.toString()
+                                morningCigarettes = morning.toString()
+
+                                prefs.edit()
+                                    .putString("objective", objective)
+                                    .putInt("cigarettesPerDay", daily)
+                                    .putInt("morningCigarettes", morning)
+                                    .apply()
+
+                                savedMessage = true
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Save targets")
+                        }
+
+                        if (savedMessage) {
+                            Text(
+                                "Targets saved",
+                                color = QuitGreen,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+            }
         }
 
         item {
@@ -1282,9 +1398,58 @@ fun SettingsScreen(
         }
     }
 
+    if (showObjective) {
+        AlertDialog(
+            onDismissRequest = {
+                showObjective = false
+            },
+            title = {
+                Text("Objective")
+            },
+            text = {
+                Column {
+                    listOf(
+                        "Quit completely",
+                        "Reduce gradually",
+                        "Quit by a specific date"
+                    ).forEach { option ->
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    objective = option
+                                    showObjective = false
+                                    savedMessage = false
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = objective == option,
+                                onClick = {
+                                    objective = option
+                                    showObjective = false
+                                    savedMessage = false
+                                }
+                            )
+
+                            Spacer(Modifier.width(8.dp))
+
+                            Text(option)
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
     if (showFontSize) {
         AlertDialog(
-            onDismissRequest = { showFontSize = false },
+            onDismissRequest = {
+                showFontSize = false
+            },
             title = {
                 Text("Font size")
             },
@@ -1322,7 +1487,9 @@ fun SettingsScreen(
 
     if (showTheme) {
         AlertDialog(
-            onDismissRequest = { showTheme = false },
+            onDismissRequest = {
+                showTheme = false
+            },
             title = {
                 Text("Palette / Theme")
             },
