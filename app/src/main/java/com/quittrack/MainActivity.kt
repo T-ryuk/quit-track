@@ -1,16 +1,32 @@
 package com.quittrack
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
@@ -24,44 +40,130 @@ data class LogEntry(
     val context: String = ""
 )
 
+private val QuitGreen = androidx.compose.ui.graphics.Color(0xFF216E3A)
+private val QuitGreenDark = androidx.compose.ui.graphics.Color(0xFF174D29)
+private val QuitGreenLight = androidx.compose.ui.graphics.Color(0xFFE8F2E8)
+private val QuitOrange = androidx.compose.ui.graphics.Color(0xFFF27A22)
+private val QuitOrangeLight = androidx.compose.ui.graphics.Color(0xFFFFE8D6)
+private val WarmBackground = androidx.compose.ui.graphics.Color(0xFFF9F8F4)
+private val CardWhite = androidx.compose.ui.graphics.Color(0xFFFFFFFF)
+private val TextDark = androidx.compose.ui.graphics.Color(0xFF172019)
+private val TextMuted = androidx.compose.ui.graphics.Color(0xFF66706A)
+private val BorderLight = androidx.compose.ui.graphics.Color(0xFFE0E4DF)
+
 class MainActivity : ComponentActivity() {
-    private val prefs by lazy { getSharedPreferences("quit_track", MODE_PRIVATE) }
+
+    private val prefs by lazy {
+        getSharedPreferences("quit_track", MODE_PRIVATE)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContent {
-            MaterialTheme {
-                QuitTrackApp(
-                    loadStartDate = { prefs.getLong("startDate", 0L) },
-                    saveStartDate = { prefs.edit().putLong("startDate", it).apply() },
-                    loadEntries = { loadEntries() },
-                    saveEntries = { saveEntries(it) }
-                )
-            }
+            QuitTrackApp(
+                loadStartDate = { prefs.getLong("startDate", 0L) },
+                saveStartDate = { prefs.edit().putLong("startDate", it).apply() },
+                loadEntries = { loadEntries() },
+                saveEntries = { saveEntries(it) },
+                loadFontSize = { prefs.getString("fontSize", "Medium") ?: "Medium" },
+                saveFontSize = { prefs.edit().putString("fontSize", it).apply() },
+                loadTheme = { prefs.getString("theme", "Light") ?: "Light" },
+                saveTheme = { prefs.edit().putString("theme", it).apply() }
+            )
         }
     }
 
     private fun loadEntries(): List<LogEntry> {
         val a = JSONArray(prefs.getString("entries", "[]") ?: "[]")
+
         return buildList {
             for (i in 0 until a.length()) {
                 val o = a.getJSONObject(i)
-                add(LogEntry(o.getString("type"), o.getLong("time"), o.optInt("intensity"),
-                    o.optString("source"), o.optString("context")))
+                add(
+                    LogEntry(
+                        o.getString("type"),
+                        o.getLong("time"),
+                        o.optInt("intensity"),
+                        o.optString("source"),
+                        o.optString("context")
+                    )
+                )
             }
         }
     }
 
     private fun saveEntries(entries: List<LogEntry>) {
         val a = JSONArray()
+
         entries.forEach { e ->
-            a.put(JSONObject().apply {
-                put("type", e.type); put("time", e.time); put("intensity", e.intensity)
-                put("source", e.source); put("context", e.context)
-            })
+            a.put(
+                JSONObject().apply {
+                    put("type", e.type)
+                    put("time", e.time)
+                    put("intensity", e.intensity)
+                    put("source", e.source)
+                    put("context", e.context)
+                }
+            )
         }
+
         prefs.edit().putString("entries", a.toString()).apply()
     }
+}
+
+@Composable
+fun QuitTrackTheme(
+    theme: String,
+    fontSize: String,
+    content: @Composable () -> Unit
+) {
+    val dark = theme == "Dark"
+
+    val colors = if (dark) {
+        darkColorScheme(
+            primary = androidx.compose.ui.graphics.Color(0xFF79C98C),
+            secondary = androidx.compose.ui.graphics.Color(0xFFFFA45C)
+        )
+    } else {
+        lightColorScheme(
+            primary = QuitGreen,
+            onPrimary = androidx.compose.ui.graphics.Color.White,
+            secondary = QuitOrange,
+            background = WarmBackground,
+            surface = CardWhite,
+            onBackground = TextDark,
+            onSurface = TextDark
+        )
+    }
+
+    val multiplier = when (fontSize) {
+        "Small" -> 0.9f
+        "Large" -> 1.12f
+        else -> 1f
+    }
+
+    MaterialTheme(
+        colorScheme = colors,
+        typography = Typography(
+            bodyLarge = MaterialTheme.typography.bodyLarge.copy(
+                fontSize = (16 * multiplier).sp
+            ),
+            bodyMedium = MaterialTheme.typography.bodyMedium.copy(
+                fontSize = (14 * multiplier).sp
+            ),
+            titleLarge = MaterialTheme.typography.titleLarge.copy(
+                fontSize = (22 * multiplier).sp
+            ),
+            headlineSmall = MaterialTheme.typography.headlineSmall.copy(
+                fontSize = (28 * multiplier).sp
+            ),
+            headlineMedium = MaterialTheme.typography.headlineMedium.copy(
+                fontSize = (32 * multiplier).sp
+            )
+        ),
+        content = content
+    )
 }
 
 @Composable
@@ -69,186 +171,1759 @@ fun QuitTrackApp(
     loadStartDate: () -> Long,
     saveStartDate: (Long) -> Unit,
     loadEntries: () -> List<LogEntry>,
-    saveEntries: (List<LogEntry>) -> Unit
+    saveEntries: (List<LogEntry>) -> Unit,
+    loadFontSize: () -> String,
+    saveFontSize: (String) -> Unit,
+    loadTheme: () -> String,
+    saveTheme: (String) -> Unit
 ) {
     var startDate by remember { mutableLongStateOf(loadStartDate()) }
     var entries by remember { mutableStateOf(loadEntries()) }
+
     var screen by remember { mutableStateOf("Today") }
     var smokeDialog by remember { mutableStateOf(false) }
     var cravingDialog by remember { mutableStateOf(false) }
 
+    var fontSize by remember { mutableStateOf(loadFontSize()) }
+    var theme by remember { mutableStateOf(loadTheme()) }
+
     val midnight = Calendar.getInstance().apply {
-        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
     }.timeInMillis
+
     if (startDate == 0L) {
-        LaunchedEffect(Unit) { startDate = midnight; saveStartDate(midnight) }
+        LaunchedEffect(Unit) {
+            startDate = midnight
+            saveStartDate(midnight)
+        }
     }
-    val day = (((midnight - startDate) / 86_400_000L).toInt() + 1).coerceIn(1, 40)
+
+    val day = (((midnight - startDate) / 86_400_000L).toInt() + 1)
+        .coerceIn(1, 40)
+
     val today = entries.filter { sameDay(it.time, midnight) }
     val smoked = today.count { it.type == "SMOKED" }
-    val morning = today.count { it.type == "SMOKED" && hour(it.time) < 10 }
+    val morning = today.count {
+        it.type == "SMOKED" && hour(it.time) < 10
+    }
     val cravings = today.count { it.type == "CRAVING" }
 
-    Scaffold(bottomBar = {
-        NavigationBar {
-            listOf("Today","Plan","Stats","Settings").forEach { s ->
-                NavigationBarItem(screen == s, { screen = s }, icon = {}, label = { Text(s) })
+    QuitTrackTheme(
+        theme = theme,
+        fontSize = fontSize
+    ) {
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
+            bottomBar = {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ) {
+                    listOf(
+                        "Today" to "⌂",
+                        "Plan" to "☷",
+                        "Stats" to "▥",
+                        "Settings" to "⚙"
+                    ).forEach { (name, icon) ->
+
+                        NavigationBarItem(
+                            selected = screen == name,
+                            onClick = { screen = name },
+                            icon = {
+                                Text(
+                                    icon,
+                                    fontSize = 22.sp
+                                )
+                            },
+                            label = {
+                                Text(name)
+                            }
+                        )
+                    }
+                }
+            }
+        ) { pad ->
+
+            when (screen) {
+                "Today" -> TodayScreen(
+                    Modifier.padding(pad),
+                    day,
+                    smoked,
+                    morning,
+                    cravings,
+                    onSmoke = { smokeDialog = true },
+                    onCraving = { cravingDialog = true },
+                    onEntries = { screen = "Entries" },
+                    onPlan = { screen = "Plan" },
+                    onEmergency = { screen = "Emergency" }
+                )
+
+                "Plan" -> PlanScreen(
+                    Modifier.padding(pad),
+                    day
+                )
+
+                "Stats" -> StatsScreen(
+                    Modifier.padding(pad),
+                    entries
+                )
+
+                "Settings" -> SettingsScreen(
+                    Modifier.padding(pad),
+                    startDate = startDate,
+                    entries = entries,
+                    fontSize = fontSize,
+                    onFontSizeChange = {
+                        fontSize = it
+                        saveFontSize(it)
+                    },
+                    theme = theme,
+                    onThemeChange = {
+                        theme = it
+                        saveTheme(it)
+                    },
+                    onReset = {
+                        val now = Calendar.getInstance().apply {
+                            set(Calendar.HOUR_OF_DAY, 0)
+                            set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0)
+                            set(Calendar.MILLISECOND, 0)
+                        }.timeInMillis
+
+                        startDate = now
+                        entries = emptyList()
+
+                        saveStartDate(now)
+                        saveEntries(entries)
+                    },
+                    onImport = { importedStartDate, importedEntries ->
+                        startDate = importedStartDate
+                        entries = importedEntries
+                        saveStartDate(importedStartDate)
+                        saveEntries(importedEntries)
+                    }
+                )
+
+                "Entries" -> EntriesScreen(
+                    Modifier.padding(pad),
+                    entries,
+                    onBack = { screen = "Today" }
+                )
+
+                "Emergency" -> EmergencyScreen(
+                    Modifier.padding(pad),
+                    onBack = { screen = "Today" }
+                )
             }
         }
-    }) { pad ->
-        when (screen) {
-            "Today" -> TodayScreen(Modifier.padding(pad), day, smoked, morning, cravings,
-                { smokeDialog = true }, { cravingDialog = true },
-                { screen = "Entries" }, { screen = "Plan" }, { screen = "Emergency" })
-            "Plan" -> PlanScreen(Modifier.padding(pad), day)
-            "Stats" -> StatsScreen(Modifier.padding(pad), entries)
-            "Settings" -> SettingsScreen(Modifier.padding(pad), startDate) {
-                val now = Calendar.getInstance().apply {
-                    set(Calendar.HOUR_OF_DAY,0); set(Calendar.MINUTE,0); set(Calendar.SECOND,0); set(Calendar.MILLISECOND,0)
-                }.timeInMillis
-                startDate = now; entries = emptyList(); saveStartDate(now); saveEntries(entries)
+
+        if (smokeDialog) {
+            SmokeDialog(
+                dismiss = { smokeDialog = false }
+            ) { source, context, intensity ->
+
+                entries = entries + LogEntry(
+                    "SMOKED",
+                    System.currentTimeMillis(),
+                    intensity,
+                    source,
+                    context
+                )
+
+                saveEntries(entries)
+                smokeDialog = false
             }
-            "Entries" -> EntriesScreen(Modifier.padding(pad), entries)
-            "Emergency" -> EmergencyScreen(Modifier.padding(pad))
         }
-    }
 
-    if (smokeDialog) SmokeDialog({ smokeDialog = false }) { source, context, intensity ->
-        entries = entries + LogEntry("SMOKED", System.currentTimeMillis(), intensity, source, context)
-        saveEntries(entries); smokeDialog = false
-    }
-    if (cravingDialog) CravingDialog({ cravingDialog = false }) { intensity, context ->
-        entries = entries + LogEntry("CRAVING", System.currentTimeMillis(), intensity, context = context)
-        saveEntries(entries); cravingDialog = false
-    }
-}
+        if (cravingDialog) {
+            CravingDialog(
+                dismiss = { cravingDialog = false }
+            ) { intensity, context ->
 
-@Composable
-fun TodayScreen(m: Modifier, day: Int, smoked: Int, morning: Int, cravings: Int,
-                onSmoke:()->Unit, onCraving:()->Unit, onEntries:()->Unit, onPlan:()->Unit, onEmergency:()->Unit) {
-    Column(m.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("Quit Track", style=MaterialTheme.typography.headlineMedium)
-        Text("Day $day of 40", style=MaterialTheme.typography.titleLarge)
-        Text("Cigarettes today: $smoked")
-        Text("Morning cigarettes: $morning")
-        Text("Cravings today: $cravings")
-        Button(onSmoke, Modifier.fillMaxWidth()) { Text("I smoked") }
-        OutlinedButton(onCraving, Modifier.fillMaxWidth()) { Text("I have a craving") }
-        OutlinedButton(onPlan, Modifier.fillMaxWidth()) { Text("View today's plan") }
-        OutlinedButton(onEntries, Modifier.fillMaxWidth()) { Text("View all entries") }
-        Button(onEmergency, Modifier.fillMaxWidth()) { Text("Emergency craving help") }
-        OutlinedButton({}, Modifier.fillMaxWidth()) { Text("Complete daily review") }
-    }
-}
+                entries = entries + LogEntry(
+                    "CRAVING",
+                    System.currentTimeMillis(),
+                    intensity,
+                    context = context
+                )
 
-@Composable
-fun PlanScreen(m:Modifier, day:Int) {
-    val phase=((day-1)/3)+1
-    Column(m.fillMaxSize().padding(20.dp), verticalArrangement=Arrangement.spacedBy(10.dp)) {
-        Text("Today's plan", style=MaterialTheme.typography.headlineSmall)
-        Text("Day $day of 40"); Text("Phase $phase")
-        Text("Focus on the targets established for this day.")
-        Text("Quit Day is Day 37. Days 38–40 are smoke-free maintenance days.")
-    }
-}
-
-@Composable
-fun StatsScreen(m:Modifier, entries:List<LogEntry>) {
-    val s=entries.filter{it.type=="SMOKED"}; val c=entries.filter{it.type=="CRAVING"}
-    Column(m.fillMaxSize().padding(20.dp), verticalArrangement=Arrangement.spacedBy(10.dp)) {
-        Text("Statistics", style=MaterialTheme.typography.headlineSmall)
-        Text("Total cigarettes: ${s.size}"); Text("Total cravings: ${c.size}")
-        Text("Average craving: ${if(c.isEmpty()) "0.0" else "%.1f".format(c.map{it.intensity}.average())}/10")
-        Text("Highest craving: ${c.maxOfOrNull{it.intensity} ?: 0}/10")
-        Text("Bought: ${s.count{it.source=="Bought"}}")
-        Text("Offered: ${s.count{it.source=="Offered"}}")
-        Text("Asked for: ${s.count{it.source=="Asked for"}}")
-    }
-}
-
-@Composable
-fun SettingsScreen(m:Modifier, start:Long, reset:()->Unit) {
-    var confirm by remember{mutableStateOf(false)}
-    Column(m.fillMaxSize().padding(20.dp), verticalArrangement=Arrangement.spacedBy(12.dp)) {
-        Text("Settings", style=MaterialTheme.typography.headlineSmall)
-        Text("Start date: ${fmtDate(start)}")
-        OutlinedButton({confirm=true}){Text("Reset plan and data")}
-    }
-    if(confirm) AlertDialog(onDismissRequest={confirm=false}, title={Text("Reset everything?")},
-        text={Text("This deletes locally stored entries and restarts Day 1.")},
-        confirmButton={TextButton({reset();confirm=false}){Text("Reset")}},
-        dismissButton={TextButton({confirm=false}){Text("Cancel")}})
-}
-
-@Composable
-fun EntriesScreen(m:Modifier, entries:List<LogEntry>) {
-    LazyColumn(m.fillMaxSize().padding(20.dp), verticalArrangement=Arrangement.spacedBy(8.dp)) {
-        item{Text("All entries", style=MaterialTheme.typography.headlineSmall)}
-        items(entries.sortedByDescending{it.time}){e->
-            Card(Modifier.fillMaxWidth()){Column(Modifier.padding(12.dp)){
-                Text(if(e.type=="SMOKED")"Smoked" else "Craving"); Text(fmtDateTime(e.time))
-                if(e.source.isNotBlank())Text("Source: ${e.source}")
-                if(e.intensity>0)Text("Intensity: ${e.intensity}/10")
-                if(e.context.isNotBlank())Text("Context: ${e.context}")
-            }}
+                saveEntries(entries)
+                cravingDialog = false
+            }
         }
     }
 }
 
 @Composable
-fun EmergencyScreen(m:Modifier) {
-    var seconds by remember{mutableIntStateOf(600)}; var running by remember{mutableStateOf(false)}
-    LaunchedEffect(running){while(running&&seconds>0){kotlinx.coroutines.delay(1000);seconds--};if(seconds==0)running=false}
-    Column(m.fillMaxSize().padding(20.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(16.dp)){
-        Text("Emergency craving help",style=MaterialTheme.typography.headlineSmall)
-        Text("Delay the decision. Move away from cigarettes. Drink water. Distract yourself. Reassess.")
-        Text("%02d:%02d".format(seconds/60,seconds%60),style=MaterialTheme.typography.displayMedium)
-        Button({running=!running}){Text(if(running)"Pause" else "Start 10-minute timer")}
-        Text("After the timer: Lower / Same / Higher")
+fun AppCard(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        shape = RoundedCornerShape(18.dp),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 1.dp
+        ),
+        content = content
+    )
+}
+
+@Composable
+fun TodayScreen(
+    m: Modifier,
+    day: Int,
+    smoked: Int,
+    morning: Int,
+    cravings: Int,
+    onSmoke: () -> Unit,
+    onCraving: () -> Unit,
+    onEntries: () -> Unit,
+    onPlan: () -> Unit,
+    onEmergency: () -> Unit
+) {
+    val target = 4
+    val progress = (smoked.toFloat() / target.toFloat()).coerceIn(0f, 1f)
+
+    LazyColumn(
+        modifier = m.fillMaxSize(),
+        contentPadding = PaddingValues(
+            start = 20.dp,
+            end = 20.dp,
+            top = 24.dp,
+            bottom = 24.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "🌿  Quit Track",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = QuitGreen
+                )
+
+                Spacer(Modifier.weight(1f))
+
+                Text(
+                    "♧",
+                    fontSize = 25.sp,
+                    color = QuitGreen
+                )
+            }
+        }
+
+        item {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    "Good morning! 👋",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    "You've got this. One day at a time.",
+                    color = TextMuted
+                )
+            }
+        }
+
+        item {
+            AppCard(
+                modifier = Modifier
+            ) {
+                Column(
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                "Day $day of 40",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Text(
+                                "Phase ${phaseForDay(day)} • ${phaseName(day)}",
+                                color = TextMuted
+                            )
+                        }
+
+                        Spacer(Modifier.weight(1f))
+
+                        Text(
+                            "▣",
+                            fontSize = 28.sp,
+                            color = QuitGreen
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(
+                                "CIGARETTES TODAY",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = TextMuted
+                            )
+
+                            Text(
+                                smoked.toString(),
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Text(
+                                "of $target target",
+                                color = TextMuted
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .size(82.dp)
+                                .border(
+                                    width = 8.dp,
+                                    color = QuitGreenLight,
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "${(progress * 100).toInt()}%",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 20.sp
+                            )
+                        }
+
+                        Column(
+                            horizontalAlignment = Alignment.End
+                        ) {
+                            Text(
+                                "MORNING",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = TextMuted
+                            )
+
+                            Text(
+                                morning.toString(),
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Text(
+                                "cigarettes",
+                                color = TextMuted
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            AppCard {
+                Column(
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        "Today's progress",
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        repeat(target) { index ->
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(12.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(
+                                        if (index < smoked)
+                                            QuitGreen
+                                        else
+                                            BorderLight
+                                    )
+                            )
+                        }
+                    }
+
+                    Text(
+                        "$smoked of $target cigarettes used",
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.End,
+                        color = TextMuted,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        }
+
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = onSmoke,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(74.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = QuitGreen
+                    )
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            "＋",
+                            fontSize = 24.sp
+                        )
+                        Text("Log a cigarette")
+                    }
+                }
+
+                Button(
+                    onClick = onCraving,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(74.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = QuitOrange
+                    )
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            "🔥",
+                            fontSize = 22.sp
+                        )
+                        Text("I have a craving")
+                    }
+                }
+            }
+        }
+
+        item {
+            ActionCard(
+                title = "Today's plan",
+                subtitle = "Focus on today's targets",
+                icon = "🎯",
+                onClick = onPlan
+            )
+        }
+
+        item {
+            ActionCard(
+                title = "Emergency craving help",
+                subtitle = "Tools to get through strong urges",
+                icon = "🛟",
+                onClick = onEmergency
+            )
+        }
+
+        item {
+            ActionCard(
+                title = "View all entries",
+                subtitle = "$cravings cravings • $smoked cigarettes today",
+                icon = "📋",
+                onClick = onEntries
+            )
+        }
     }
 }
 
 @Composable
-fun SmokeDialog(dismiss:()->Unit, save:(String,String,Int)->Unit){
-    var source by remember{mutableStateOf("Bought")}; var context by remember{mutableStateOf("")}; var intensity by remember{mutableIntStateOf(0)}
-    AlertDialog(onDismissRequest=dismiss,title={Text("I smoked")},text={
-        Column(verticalArrangement=Arrangement.spacedBy(6.dp)){
-            Text("How did you get it?")
-            listOf("Bought","Offered","Asked for","Other").forEach{Row(verticalAlignment=Alignment.CenterVertically){
-                RadioButton(source==it,{source=it});Text(it)}}
-            OutlinedTextField(context,{context=it},label={Text("Context (optional)")})
-            Text("Craving: ${if(intensity==0)"Not rated" else "$intensity/10"}")
-            Slider(
-    value = intensity.toFloat(),
-    onValueChange = { intensity = it.toInt() },
-    valueRange = 0f..10f,
-    steps = 9
-)
-        }},confirmButton={TextButton({save(source,context,intensity)}){Text("Save")}},
-        dismissButton={TextButton(dismiss){Text("Cancel")}})
+fun ActionCard(
+    title: String,
+    subtitle: String,
+    icon: String,
+    onClick: () -> Unit
+) {
+    AppCard(
+        modifier = Modifier.clickable { onClick() }
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                icon,
+                fontSize = 28.sp
+            )
+
+            Spacer(Modifier.width(14.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    title,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    subtitle,
+                    color = TextMuted,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            Text(
+                "›",
+                fontSize = 28.sp,
+                color = TextMuted
+            )
+        }
+    }
 }
 
 @Composable
-fun CravingDialog(dismiss:()->Unit, save:(Int,String)->Unit){
-    var intensity by remember{mutableIntStateOf(5)};var context by remember{mutableStateOf("")}
-    AlertDialog(onDismissRequest=dismiss,title={Text("I have a craving")},text={
-        Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
-            Text("Intensity: $intensity/10")
-            Slider(
-    value = intensity.toFloat(),
-    onValueChange = { intensity = it.toInt() },
-    valueRange = 1f..10f,
-    steps = 8
-)
-            OutlinedTextField(context,{context=it},label={Text("Situation/context")})
-        }},confirmButton={TextButton({save(intensity,context)}){Text("Save")}},
-        dismissButton={TextButton(dismiss){Text("Cancel")}})
+fun PlanScreen(
+    m: Modifier,
+    currentDay: Int
+) {
+    val days = (1..40).toList()
+
+    LazyColumn(
+        modifier = m.fillMaxSize(),
+        contentPadding = PaddingValues(
+            start = 20.dp,
+            end = 20.dp,
+            top = 24.dp,
+            bottom = 24.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+
+        item {
+            Text(
+                "Plan",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = QuitGreen
+            )
+        }
+
+        item {
+            Text(
+                "Your 40-Day Plan",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                "Your journey toward a smoke-free life.",
+                color = TextMuted
+            )
+        }
+
+        itemsIndexed(days) { index, day ->
+
+            val completed = day < currentDay
+            val current = day == currentDay
+
+            AppCard {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(CircleShape)
+                            .background(
+                                when {
+                                    completed -> QuitGreen
+                                    current -> QuitGreenLight
+                                    else -> BorderLight
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            if (completed) "✓" else day.toString(),
+                            fontWeight = FontWeight.Bold,
+                            color = if (completed) androidx.compose.ui.graphics.Color.White
+                            else QuitGreen
+                        )
+                    }
+
+                    Spacer(Modifier.width(14.dp))
+
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            "Day $day",
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Text(
+                            planTitle(day),
+                            fontWeight = if (current)
+                                FontWeight.Bold
+                            else
+                                FontWeight.Normal
+                        )
+
+                        Text(
+                            planSubtitle(day),
+                            color = TextMuted,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
+                    Text(
+                        "›",
+                        fontSize = 28.sp,
+                        color = TextMuted
+                    )
+                }
+            }
+        }
+
+        item {
+            AppCard {
+                Column(
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        "🌱  Every day is a step forward.",
+                        fontWeight = FontWeight.Bold,
+                        color = QuitGreen
+                    )
+
+                    Text(
+                        "Small steps. Big change.",
+                        color = TextMuted
+                    )
+                }
+            }
+        }
+    }
 }
 
-fun sameDay(a:Long,b:Long):Boolean{
-    val x=Calendar.getInstance().apply{timeInMillis=a};val y=Calendar.getInstance().apply{timeInMillis=b}
-    return x.get(Calendar.YEAR)==y.get(Calendar.YEAR)&&x.get(Calendar.DAY_OF_YEAR)==y.get(Calendar.DAY_OF_YEAR)
+@Composable
+fun StatsScreen(
+    m: Modifier,
+    entries: List<LogEntry>
+) {
+    val smoked = entries.filter { it.type == "SMOKED" }
+    val cravings = entries.filter { it.type == "CRAVING" }
+
+    val averageCraving =
+        if (cravings.isEmpty()) 0.0
+        else cravings.map { it.intensity }.average()
+
+    val highestCraving =
+        cravings.maxOfOrNull { it.intensity } ?: 0
+
+    LazyColumn(
+        modifier = m.fillMaxSize(),
+        contentPadding = PaddingValues(
+            start = 20.dp,
+            end = 20.dp,
+            top = 24.dp,
+            bottom = 24.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+
+        item {
+            Text(
+                "Stats",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = QuitGreen
+            )
+        }
+
+        item {
+            AppCard {
+                Column(
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                "Overview",
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Text(
+                                "Your progress so far",
+                                color = TextMuted,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = QuitGreenLight
+                        ) {
+                            Text(
+                                "All time",
+                                modifier = Modifier.padding(
+                                    horizontal = 12.dp,
+                                    vertical = 8.dp
+                                ),
+                                color = QuitGreen
+                            )
+                        }
+                    }
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        StatBox(
+                            modifier = Modifier.weight(1f),
+                            title = "Cigarettes logged",
+                            value = smoked.size.toString()
+                        )
+
+                        StatBox(
+                            modifier = Modifier.weight(1f),
+                            title = "Cravings logged",
+                            value = cravings.size.toString()
+                        )
+                    }
+                }
+            }
+        }
+
+        item {
+            AppCard {
+                Column(
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        "Craving insights",
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    StatRow(
+                        "Average craving",
+                        "${"%.1f".format(averageCraving)}/10"
+                    )
+
+                    StatRow(
+                        "Highest craving",
+                        "$highestCraving/10"
+                    )
+                }
+            }
+        }
+
+        item {
+            AppCard {
+                Column(
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        "How cigarettes were obtained",
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    StatRow(
+                        "Bought",
+                        smoked.count { it.source == "Bought" }.toString()
+                    )
+
+                    StatRow(
+                        "Offered",
+                        smoked.count { it.source == "Offered" }.toString()
+                    )
+
+                    StatRow(
+                        "Asked for",
+                        smoked.count { it.source == "Asked for" }.toString()
+                    )
+
+                    StatRow(
+                        "Other",
+                        smoked.count { it.source == "Other" }.toString()
+                    )
+                }
+            }
+        }
+
+        item {
+            AppCard {
+                Column(
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "Progress",
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        if (smoked.isEmpty())
+                            "Your tracking journey starts here."
+                        else
+                            "Keep tracking. Patterns become clearer over time.",
+                        color = TextMuted
+                    )
+                }
+            }
+        }
+    }
 }
-fun hour(t:Long)=Calendar.getInstance().apply{timeInMillis=t}.get(Calendar.HOUR_OF_DAY)
-fun fmtDate(t:Long)=SimpleDateFormat("yyyy-MM-dd",Locale.getDefault()).format(Date(t))
-fun fmtDateTime(t:Long)=SimpleDateFormat("yyyy-MM-dd HH:mm",Locale.getDefault()).format(Date(t))
+
+@Composable
+fun StatBox(
+    modifier: Modifier,
+    title: String,
+    value: String
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.background,
+        tonalElevation = 1.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                title,
+                style = MaterialTheme.typography.bodySmall,
+                color = TextMuted
+            )
+
+            Text(
+                value,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = QuitGreen
+            )
+        }
+    }
+}
+
+@Composable
+fun StatRow(
+    label: String,
+    value: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label)
+        Text(
+            value,
+            fontWeight = FontWeight.Bold,
+            color = QuitGreen
+        )
+    }
+}
+
+@Composable
+fun SettingsScreen(
+    m: Modifier,
+    startDate: Long,
+    entries: List<LogEntry>,
+    fontSize: String,
+    onFontSizeChange: (String) -> Unit,
+    theme: String,
+    onThemeChange: (String) -> Unit,
+    onReset: () -> Unit,
+    onImport: (Long, List<LogEntry>) -> Unit
+) {
+    var showReset by remember { mutableStateOf(false) }
+    var showFontSize by remember { mutableStateOf(false) }
+    var showTheme by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+
+    val exportLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.CreateDocument("application/json")
+        ) { uri ->
+
+            if (uri != null) {
+                val root = JSONObject()
+
+                root.put("startDate", startDate)
+
+                val array = JSONArray()
+
+                entries.forEach { e ->
+                    array.put(
+                        JSONObject().apply {
+                            put("type", e.type)
+                            put("time", e.time)
+                            put("intensity", e.intensity)
+                            put("source", e.source)
+                            put("context", e.context)
+                        }
+                    )
+                }
+
+                root.put("entries", array)
+
+                context.contentResolver.openOutputStream(uri)?.use {
+                    it.write(root.toString(2).toByteArray())
+                }
+            }
+        }
+
+    val importLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.OpenDocument()
+        ) { uri ->
+
+            if (uri != null) {
+                try {
+                    val json = context.contentResolver
+                        .openInputStream(uri)
+                        ?.bufferedReader()
+                        ?.use { it.readText() }
+
+                    if (json != null) {
+                        val root = JSONObject(json)
+
+                        val importedStart =
+                            root.optLong("startDate", startDate)
+
+                        val array =
+                            root.optJSONArray("entries") ?: JSONArray()
+
+                        val importedEntries =
+                            buildList {
+                                for (i in 0 until array.length()) {
+                                    val o = array.getJSONObject(i)
+
+                                    add(
+                                        LogEntry(
+                                            o.getString("type"),
+                                            o.getLong("time"),
+                                            o.optInt("intensity"),
+                                            o.optString("source"),
+                                            o.optString("context")
+                                        )
+                                    )
+                                }
+                            }
+
+                        onImport(
+                            importedStart,
+                            importedEntries
+                        )
+                    }
+                } catch (_: Exception) {
+                    // Invalid import files are ignored.
+                }
+            }
+        }
+
+    LazyColumn(
+        modifier = m.fillMaxSize(),
+        contentPadding = PaddingValues(
+            start = 20.dp,
+            end = 20.dp,
+            top = 24.dp,
+            bottom = 24.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+
+        item {
+            Text(
+                "Settings",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = QuitGreen
+            )
+        }
+
+        item {
+            SettingsSectionTitle("APPEARANCE")
+
+            AppCard {
+                Column {
+                    SettingsRow(
+                        icon = "Aa",
+                        title = "Font size",
+                        subtitle = fontSize,
+                        onClick = { showFontSize = true }
+                    )
+
+                    Divider()
+
+                    SettingsRow(
+                        icon = "◐",
+                        title = "Palette / Theme",
+                        subtitle = theme,
+                        onClick = { showTheme = true }
+                    )
+                }
+            }
+        }
+
+        item {
+            SettingsSectionTitle("DATA")
+
+            AppCard {
+                Column {
+                    SettingsRow(
+                        icon = "⇩",
+                        title = "Export my data",
+                        subtitle = "Save a copy of your data",
+                        onClick = {
+                            exportLauncher.launch("quit-track-backup.json")
+                        }
+                    )
+
+                    Divider()
+
+                    SettingsRow(
+                        icon = "⇧",
+                        title = "Import my data",
+                        subtitle = "Restore data from a file",
+                        onClick = {
+                            importLauncher.launch(
+                                arrayOf("application/json")
+                            )
+                        }
+                    )
+
+                    Divider()
+
+                    SettingsRow(
+                        icon = "⌫",
+                        title = "Delete all my data",
+                        subtitle = "Permanently delete your local data",
+                        titleColor = MaterialTheme.colorScheme.error,
+                        onClick = { showReset = true }
+                    )
+                }
+            }
+        }
+
+        item {
+            SettingsSectionTitle("ABOUT")
+
+            AppCard {
+                Column {
+                    SettingsRow(
+                        icon = "ⓘ",
+                        title = "About Quit Track",
+                        subtitle = "Learn more about the app",
+                        onClick = {}
+                    )
+
+                    Divider()
+
+                    SettingsRow(
+                        icon = "✓",
+                        title = "Privacy",
+                        subtitle = "Your tracking data stays on this device",
+                        onClick = {}
+                    )
+
+                    Divider()
+
+                    SettingsRow(
+                        icon = "#",
+                        title = "Version",
+                        subtitle = "0.2.0",
+                        onClick = {}
+                    )
+                }
+            }
+        }
+
+        item {
+            Text(
+                "Start date: ${fmtDate(startDate)}",
+                color = TextMuted,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+    }
+
+    if (showFontSize) {
+        AlertDialog(
+            onDismissRequest = { showFontSize = false },
+            title = {
+                Text("Font size")
+            },
+            text = {
+                Column {
+                    listOf("Small", "Medium", "Large").forEach { size ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onFontSizeChange(size)
+                                    showFontSize = false
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = fontSize == size,
+                                onClick = {
+                                    onFontSizeChange(size)
+                                    showFontSize = false
+                                }
+                            )
+
+                            Spacer(Modifier.width(8.dp))
+
+                            Text(size)
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showTheme) {
+        AlertDialog(
+            onDismissRequest = { showTheme = false },
+            title = {
+                Text("Palette / Theme")
+            },
+            text = {
+                Column {
+                    listOf("Light", "Dark", "System").forEach { option ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onThemeChange(option)
+                                    showTheme = false
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = theme == option,
+                                onClick = {
+                                    onThemeChange(option)
+                                    showTheme = false
+                                }
+                            )
+
+                            Spacer(Modifier.width(8.dp))
+
+                            Text(option)
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showReset) {
+        AlertDialog(
+            onDismissRequest = {
+                showReset = false
+            },
+            title = {
+                Text("Delete everything?")
+            },
+            text = {
+                Text(
+                    "This permanently deletes locally stored entries and restarts the plan at Day 1."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onReset()
+                        showReset = false
+                    }
+                ) {
+                    Text(
+                        "Delete",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showReset = false
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun SettingsSectionTitle(
+    text: String
+) {
+    Text(
+        text,
+        modifier = Modifier.padding(
+            start = 4.dp,
+            bottom = 4.dp
+        ),
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.Bold,
+        color = QuitGreen
+    )
+}
+
+@Composable
+fun SettingsRow(
+    icon: String,
+    title: String,
+    subtitle: String,
+    titleColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            icon,
+            modifier = Modifier.width(36.dp),
+            fontSize = 21.sp,
+            color = if (titleColor == MaterialTheme.colorScheme.error)
+                titleColor
+            else
+                QuitGreen
+        )
+
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                title,
+                fontWeight = FontWeight.SemiBold,
+                color = titleColor
+            )
+
+            Text(
+                subtitle,
+                color = TextMuted,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+
+        Text(
+            "›",
+            fontSize = 26.sp,
+            color = TextMuted
+        )
+    }
+}
+
+@Composable
+fun EntriesScreen(
+    m: Modifier,
+    entries: List<LogEntry>,
+    onBack: () -> Unit
+) {
+    LazyColumn(
+        modifier = m.fillMaxSize(),
+        contentPadding = PaddingValues(
+            start = 20.dp,
+            end = 20.dp,
+            top = 24.dp,
+            bottom = 24.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+
+        item {
+            TextButton(onClick = onBack) {
+                Text("‹ Back")
+            }
+        }
+
+        item {
+            Text(
+                "All entries",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        if (entries.isEmpty()) {
+            item {
+                AppCard {
+                    Text(
+                        "No entries yet.",
+                        modifier = Modifier.padding(20.dp),
+                        color = TextMuted
+                    )
+                }
+            }
+        }
+
+        items(
+            entries.sortedByDescending { it.time }
+        ) { e ->
+
+            AppCard {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    Text(
+                        if (e.type == "SMOKED")
+                            "🚬  Smoked"
+                        else
+                            "🔥  Craving",
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        fmtDateTime(e.time),
+                        color = TextMuted,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+
+                    if (e.source.isNotBlank()) {
+                        Text("Source: ${e.source}")
+                    }
+
+                    if (e.intensity > 0) {
+                        Text("Intensity: ${e.intensity}/10")
+                    }
+
+                    if (e.context.isNotBlank()) {
+                        Text("Context: ${e.context}")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EmergencyScreen(
+    m: Modifier,
+    onBack: () -> Unit
+) {
+    var seconds by remember {
+        mutableIntStateOf(600)
+    }
+
+    var running by remember {
+        mutableStateOf(false)
+    }
+
+    LaunchedEffect(running) {
+        while (running && seconds > 0) {
+            kotlinx.coroutines.delay(1000)
+            seconds--
+        }
+
+        if (seconds == 0) {
+            running = false
+        }
+    }
+
+    Column(
+        modifier = m
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
+
+        Row(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            TextButton(onClick = onBack) {
+                Text("‹ Back")
+            }
+        }
+
+        Text(
+            "🔥",
+            fontSize = 48.sp
+        )
+
+        Text(
+            "Emergency craving help",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+
+        Text(
+            "Delay the decision. Move away from cigarettes. Drink water. Distract yourself. Reassess.",
+            textAlign = TextAlign.Center,
+            color = TextMuted
+        )
+
+        Text(
+            "%02d:%02d".format(
+                seconds / 60,
+                seconds % 60
+            ),
+            style = MaterialTheme.typography.displayMedium,
+            fontWeight = FontWeight.Bold,
+            color = QuitGreen
+        )
+
+        Button(
+            onClick = {
+                running = !running
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Text(
+                if (running)
+                    "Pause"
+                else
+                    "Start 10-minute timer"
+            )
+        }
+
+        AppCard {
+            Column(
+                modifier = Modifier.padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    "While you wait",
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text("• Move somewhere cigarettes aren't available.")
+                Text("• Drink a glass of water.")
+                Text("• Take a few slow breaths.")
+                Text("• Distract yourself for a few minutes.")
+                Text("• Reassess the craving when the timer ends.")
+            }
+        }
+
+        Text(
+            "After the timer: Lower / Same / Higher",
+            color = TextMuted
+        )
+    }
+}
+
+@Composable
+fun SmokeDialog(
+    dismiss: () -> Unit,
+    save: (String, String, Int) -> Unit
+) {
+    var source by remember {
+        mutableStateOf("Bought")
+    }
+
+    var context by remember {
+        mutableStateOf("")
+    }
+
+    var intensity by remember {
+        mutableIntStateOf(0)
+    }
+
+    AlertDialog(
+        onDismissRequest = dismiss,
+        title = {
+            Text("I smoked")
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+
+                Text(
+                    "How did you get it?",
+                    fontWeight = FontWeight.Bold
+                )
+
+                listOf(
+                    "Bought",
+                    "Offered",
+                    "Asked for",
+                    "Other"
+                ).forEach {
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                source = it
+                            },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = source == it,
+                            onClick = {
+                                source = it
+                            }
+                        )
+
+                        Text(it)
+                    }
+                }
+
+                OutlinedTextField(
+                    value = context,
+                    onValueChange = {
+                        context = it
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = {
+                        Text("Context (optional)")
+                    }
+                )
+
+                Text(
+                    "Craving: ${
+                        if (intensity == 0)
+                            "Not rated"
+                        else
+                            "$intensity/10"
+                    }"
+                )
+
+                Slider(
+                    value = intensity.toFloat(),
+                    onValueChange = {
+                        intensity = it.toInt()
+                    },
+                    valueRange = 0f..10f,
+                    steps = 9
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    save(
+                        source,
+                        context,
+                        intensity
+                    )
+                }
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = dismiss
+            ) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun CravingDialog(
+    dismiss: () -> Unit,
+    save: (Int, String) -> Unit
+) {
+    var intensity by remember {
+        mutableIntStateOf(5)
+    }
+
+    var context by remember {
+        mutableStateOf("")
+    }
+
+    AlertDialog(
+        onDismissRequest = dismiss,
+        title = {
+            Text("I have a craving")
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+
+                Text(
+                    "Intensity: $intensity/10",
+                    fontWeight = FontWeight.Bold
+                )
+
+                Slider(
+                    value = intensity.toFloat(),
+                    onValueChange = {
+                        intensity = it.toInt()
+                    },
+                    valueRange = 1f..10f,
+                    steps = 8
+                )
+
+                OutlinedTextField(
+                    value = context,
+                    onValueChange = {
+                        context = it
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = {
+                        Text("Situation / context")
+                    }
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    save(
+                        intensity,
+                        context
+                    )
+                }
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = dismiss
+            ) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+fun phaseForDay(day: Int): Int {
+    return when {
+        day <= 3 -> 1
+        day <= 6 -> 2
+        day <= 9 -> 3
+        day <= 12 -> 4
+        day <= 15 -> 5
+        day <= 18 -> 6
+        day <= 21 -> 7
+        day <= 24 -> 8
+        day <= 27 -> 9
+        day <= 30 -> 10
+        day <= 33 -> 11
+        day <= 36 -> 12
+        day == 37 -> 13
+        else -> 14
+    }
+}
+
+fun phaseName(day: Int): String {
+    return when {
+        day == 1 -> "Foundation"
+        day == 2 -> "Preparation"
+        day == 3 -> "Strengthening"
+        day in 38..40 -> "Smoke-free maintenance"
+        day == 37 -> "Quit Day"
+        else -> "Building skills"
+    }
+}
+
+fun planTitle(day: Int): String {
+    return when {
+        day == 1 -> "Foundation"
+        day == 2 -> "Preparation"
+        day == 3 -> "Strengthening"
+        day == 37 -> "Quit Day 🎯"
+        day in 38..40 -> "Smoke-free maintenance"
+        else -> "Building skills"
+    }
+}
+
+fun planSubtitle(day: Int): String {
+    return when {
+        day == 1 -> "Build awareness and track your habits."
+        day == 2 -> "Understand your triggers and routines."
+        day == 3 -> "Build skills to handle cravings."
+        day == 37 -> "This is your quit day. You've got this!"
+        day in 38..40 -> "Stay strong and keep the momentum."
+        else -> "Continue working toward your quit day."
+    }
+}
+
+fun sameDay(
+    a: Long,
+    b: Long
+): Boolean {
+    val x = Calendar.getInstance().apply {
+        timeInMillis = a
+    }
+
+    val y = Calendar.getInstance().apply {
+        timeInMillis = b
+    }
+
+    return x.get(Calendar.YEAR) == y.get(Calendar.YEAR) &&
+            x.get(Calendar.DAY_OF_YEAR) == y.get(Calendar.DAY_OF_YEAR)
+}
+
+fun hour(t: Long): Int {
+    return Calendar.getInstance()
+        .apply {
+            timeInMillis = t
+        }
+        .get(Calendar.HOUR_OF_DAY)
+}
+
+fun fmtDate(t: Long): String {
+    return SimpleDateFormat(
+        "yyyy-MM-dd",
+        Locale.getDefault()
+    ).format(Date(t))
+}
+
+fun fmtDateTime(t: Long): String {
+    return SimpleDateFormat(
+        "yyyy-MM-dd HH:mm",
+        Locale.getDefault()
+    ).format(Date(t))
+}
