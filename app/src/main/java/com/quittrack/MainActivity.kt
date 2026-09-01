@@ -72,6 +72,7 @@ class MainActivity : ComponentActivity() {
                 saveStartDate = { prefs.edit().putLong("startDate", it).apply() },
                 loadEntries = { loadEntries() },
                 saveEntries = { saveEntries(it) },
+                loadDailyReviews = { loadDailyReviews() },
                 saveDailyReview = { saveDailyReview(it) },
                 loadFontSize = { prefs.getString("fontSize", "Medium") ?: "Medium" },
                 saveFontSize = { prefs.edit().putString("fontSize", it).apply() },
@@ -145,6 +146,43 @@ class MainActivity : ComponentActivity() {
     prefs.edit()
         .putString("dailyReviews", reviews.toString())
         .apply()
+}
+
+    private fun loadDailyReviews(): List<DailyReview> {
+    val reviews = JSONArray(
+        prefs.getString("dailyReviews", "[]") ?: "[]"
+    )
+
+    return buildList {
+        for (i in 0 until reviews.length()) {
+            val root = reviews.getJSONObject(i)
+            val array = root.optJSONArray("entries") ?: JSONArray()
+
+            val reviewEntries = buildList {
+                for (j in 0 until array.length()) {
+                    val o = array.getJSONObject(j)
+
+                    add(
+                        LogEntry(
+                            type = o.getString("type"),
+                            time = o.getLong("time"),
+                            intensity = o.optInt("intensity"),
+                            source = o.optString("source"),
+                            context = o.optString("context"),
+                            morning = o.optBoolean("morning", false)
+                        )
+                    )
+                }
+            }
+
+            add(
+                DailyReview(
+                    date = root.optString("date"),
+                    entries = reviewEntries
+                )
+            )
+        }
+    }
 }
 
 private fun reviewToJson(review: DailyReview): JSONObject {
@@ -232,6 +270,7 @@ fun QuitTrackApp(
     saveStartDate: (Long) -> Unit,
     loadEntries: () -> List<LogEntry>,
     saveEntries: (List<LogEntry>) -> Unit,
+    loadDailyReviews: () -> List<DailyReview>,
     loadFontSize: () -> String,
     saveFontSize: (String) -> Unit,
     loadTheme: () -> String,
@@ -240,7 +279,7 @@ fun QuitTrackApp(
 ) {
     var startDate by remember { mutableLongStateOf(loadStartDate()) }
     var entries by remember { mutableStateOf(loadEntries()) }
-
+    var dailyReviews by remember { mutableStateOf(loadDailyReviews()) }
     var screen by remember { mutableStateOf("Today") }
     var smokeDialog by remember { mutableStateOf(false) }
     var cravingDialog by remember { mutableStateOf(false) }
@@ -325,12 +364,15 @@ fun QuitTrackApp(
         sameDay(it.time, midnight)
     }
 
-    saveDailyReview(
-        DailyReview(
-            date = fmtDate(midnight),
-            entries = todayEntries
-        )
+    val review = DailyReview(
+        date = fmtDate(midnight),
+        entries = todayEntries
     )
+
+    saveDailyReview(review)
+
+    dailyReviews = dailyReviews
+        .filterNot { it.date == review.date } + review
 
     reviewSaved = true
 },
@@ -349,9 +391,10 @@ fun QuitTrackApp(
                 )
 
                 "DailyReviews" -> DailyReviewsScreen(
-                    Modifier.padding(pad),
-                    onBack = { screen = "Stats" }
-                )
+    Modifier.padding(pad),
+    reviews = dailyReviews,
+    onBack = { screen = "Stats" }
+)
 
 
                 "Settings" -> SettingsScreen(
@@ -2143,6 +2186,7 @@ fun fmtDateTime(t: Long): String {
 @Composable
 fun DailyReviewsScreen(
     m: Modifier,
+    reviews: List<DailyReview>,
     onBack: () -> Unit
 ) {
     LazyColumn(
@@ -2176,15 +2220,51 @@ fun DailyReviewsScreen(
             )
         }
 
-        item {
-            AppCard {
+        if (reviews.isEmpty()) {
+    item {
+        AppCard {
+            Text(
+                "No saved reviews yet.",
+                modifier = Modifier.padding(20.dp),
+                color = TextMuted
+            )
+        }
+    }
+} else {
+    items(
+        reviews.sortedByDescending { it.date }
+    ) { review ->
+
+        val smoked = review.entries.count {
+            it.type == "SMOKED"
+        }
+
+        val cravings = review.entries.count {
+            it.type == "CRAVING"
+        }
+
+        val morning = review.entries.count {
+            it.type == "SMOKED" && it.morning
+        }
+
+        AppCard {
+            Column(
+                modifier = Modifier.padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 Text(
-                    "No saved reviews yet.",
-                    modifier = Modifier.padding(20.dp),
-                    color = TextMuted
+                    review.date,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium
                 )
+
+                Text("Cigarettes: $smoked")
+                Text("Morning cigarettes: $morning")
+                Text("Cravings: $cravings")
             }
         }
+    }
+}
     }
 }
 }
