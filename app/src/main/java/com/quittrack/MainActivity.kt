@@ -249,7 +249,7 @@ fun QuitTrackApp(
             }
         ) { pad ->
 
-            when (screen) {
+                        when (screen) {
                 "Today" -> TodayScreen(
                     Modifier.padding(pad),
                     day,
@@ -322,28 +322,27 @@ fun QuitTrackApp(
                 )
             }
         }
-    )
 
-     if (smokeDialog) {
-    SmokeDialog(
-        dismiss = { smokeDialog = false }
-    ) { source, context, intensity, morning ->
+        if (smokeDialog) {
+            SmokeDialog(
+                dismiss = { smokeDialog = false }
+            ) { source, context, intensity, morning ->
 
-        entries = entries + LogEntry(
-            "SMOKED",
-            System.currentTimeMillis(),
-            intensity,
-            source,
-            context,
-            morning
-        )
+                entries = entries + LogEntry(
+                    "SMOKED",
+                    System.currentTimeMillis(),
+                    intensity,
+                    source,
+                    context,
+                    morning
+                )
 
-        saveEntries(entries)
-        smokeDialog = false
-    }
-}
+                saveEntries(entries)
+                smokeDialog = false
+            }
+        }
 
-               if (cravingDialog) {
+        if (cravingDialog) {
             CravingDialog(
                 dismiss = { cravingDialog = false }
             ) { intensity, context, morning ->
