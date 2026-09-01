@@ -41,6 +41,11 @@ data class LogEntry(
     val morning: Boolean = false
 )
 
+data class DailyReview(
+    val date: String,
+    val entries: List<LogEntry>
+)
+
 private val QuitGreen = androidx.compose.ui.graphics.Color(0xFF216E3A)
 private val QuitGreenDark = androidx.compose.ui.graphics.Color(0xFF174D29)
 private val QuitGreenLight = androidx.compose.ui.graphics.Color(0xFFE8F2E8)
@@ -67,6 +72,7 @@ class MainActivity : ComponentActivity() {
                 saveStartDate = { prefs.edit().putLong("startDate", it).apply() },
                 loadEntries = { loadEntries() },
                 saveEntries = { saveEntries(it) },
+                saveDailyReview = { saveDailyReview(it) },
                 loadFontSize = { prefs.getString("fontSize", "Medium") ?: "Medium" },
                 saveFontSize = { prefs.edit().putString("fontSize", it).apply() },
                 loadTheme = { prefs.getString("theme", "Light") ?: "Light" },
@@ -114,7 +120,58 @@ class MainActivity : ComponentActivity() {
 
     prefs.edit().putString("entries", a.toString()).apply()
 }
-    
+
+    private fun saveDailyReview(review: DailyReview) {
+    val reviews = JSONArray(
+        prefs.getString("dailyReviews", "[]") ?: "[]"
+    )
+
+    var replaced = false
+
+    for (i in 0 until reviews.length()) {
+        val existing = reviews.getJSONObject(i)
+
+        if (existing.optString("date") == review.date) {
+            reviews.put(i, reviewToJson(review))
+            replaced = true
+            break
+        }
+    }
+
+    if (!replaced) {
+        reviews.put(reviewToJson(review))
+    }
+
+    prefs.edit()
+        .putString("dailyReviews", reviews.toString())
+        .apply()
+}
+
+private fun reviewToJson(review: DailyReview): JSONObject {
+    val root = JSONObject()
+
+    root.put("date", review.date)
+
+    val array = JSONArray()
+
+    review.entries.forEach { e ->
+        array.put(
+            JSONObject().apply {
+                put("type", e.type)
+                put("time", e.time)
+                put("intensity", e.intensity)
+                put("source", e.source)
+                put("context", e.context)
+                put("morning", e.morning)
+            }
+        )
+    }
+
+    root.put("entries", array)
+
+    return root
+}
+
 @Composable
 fun QuitTrackTheme(
     theme: String,
@@ -178,7 +235,8 @@ fun QuitTrackApp(
     loadFontSize: () -> String,
     saveFontSize: (String) -> Unit,
     loadTheme: () -> String,
-    saveTheme: (String) -> Unit
+    saveTheme: (String) -> Unit,
+    saveDailyReview: (DailyReview) -> Unit
 ) {
     var startDate by remember { mutableLongStateOf(loadStartDate()) }
     var entries by remember { mutableStateOf(loadEntries()) }
@@ -186,6 +244,7 @@ fun QuitTrackApp(
     var screen by remember { mutableStateOf("Today") }
     var smokeDialog by remember { mutableStateOf(false) }
     var cravingDialog by remember { mutableStateOf(false) }
+    var reviewSaved by remember { mutableStateOf(false) }
 
     var fontSize by remember { mutableStateOf(loadFontSize()) }
     var theme by remember { mutableStateOf(loadTheme()) }
@@ -261,7 +320,21 @@ fun QuitTrackApp(
                     onEntries = { screen = "Entries" },
                     onPlan = { screen = "Plan" },
                     onEmergency = { screen = "Emergency" },
-                    onSaveReview = { }
+                    onSaveReview = {
+    val todayEntries = entries.filter {
+        sameDay(it.time, midnight)
+    }
+
+    saveDailyReview(
+        DailyReview(
+            date = fmtDate(midnight),
+            entries = todayEntries
+        )
+    )
+
+    reviewSaved = true
+},
+    reviewSaved = reviewSaved
                 )
 
                 "Plan" -> PlanScreen(
@@ -392,7 +465,8 @@ fun TodayScreen(
     onEntries: () -> Unit,
     onPlan: () -> Unit,
     onEmergency: () -> Unit,
-    onSaveReview: () -> Unit
+    onSaveReview: () -> Unit,
+    reviewSaved: Boolean
 ) {
     LazyColumn(
         modifier = m.fillMaxSize(),
@@ -544,9 +618,12 @@ fun TodayScreen(
                 )
             ) {
                 Text(
-                    "✓  Save today's review",
-                    fontWeight = FontWeight.Bold
-                )
+    if (reviewSaved)
+        "✓  Today's review saved"
+    else
+        "✓  Save today's review",
+    fontWeight = FontWeight.Bold
+)
             }
         }
 
