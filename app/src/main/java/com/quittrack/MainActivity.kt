@@ -323,40 +323,40 @@ fun QuitTrackApp(
             }
         }
 
-        if (smokeDialog) {
-            SmokeDialog(
-                dismiss = { smokeDialog = false }
-            ) { source, context, intensity ->
+     if (smokeDialog) {
+    SmokeDialog(
+        dismiss = { smokeDialog = false }
+    ) { source, context, intensity, morning ->
 
-                entries = entries + LogEntry(
-                    "SMOKED",
-                    System.currentTimeMillis(),
-                    intensity,
-                    source,
-                    context
-                )
+        entries = entries + LogEntry(
+            "SMOKED",
+            System.currentTimeMillis(),
+            intensity,
+            source,
+            context,
+            morning
+        )
 
-                saveEntries(entries)
-                smokeDialog = false
-            }
-        }
+        saveEntries(entries)
+        smokeDialog = false
+    }
+}
 
         if (cravingDialog) {
-            CravingDialog(
-                dismiss = { cravingDialog = false }
-            ) { intensity, context ->
+    CravingDialog(
+        dismiss = { cravingDialog = false }
+    ) { intensity, context, morning ->
 
-                entries = entries + LogEntry(
-                    "CRAVING",
-                    System.currentTimeMillis(),
-                    intensity,
-                    context = context
-                )
+        entries = entries + LogEntry(
+            "CRAVING",
+            System.currentTimeMillis(),
+            intensity,
+            context = context,
+            morning = morning
+        )
 
-                saveEntries(entries)
-                cravingDialog = false
-            }
-        }
+        saveEntries(entries)
+        cravingDialog = false
     }
 }
 
@@ -1785,86 +1785,74 @@ fun EmergencyScreen(
 @Composable
 fun SmokeDialog(
     dismiss: () -> Unit,
-    save: (String, String, Int) -> Unit
+    save: (String, String, Int, Boolean) -> Unit
 ) {
-    var source by remember {
-        mutableStateOf("Bought")
-    }
-
-    var context by remember {
-        mutableStateOf("")
-    }
-
-    var intensity by remember {
-        mutableIntStateOf(0)
-    }
+    var source by remember { mutableStateOf("Bought") }
+    var context by remember { mutableStateOf("") }
+    var intensity by remember { mutableIntStateOf(0) }
+    var morning by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = dismiss,
-        title = {
-            Text("I smoked")
-        },
+        title = { Text("I smoked") },
         text = {
             Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                Text("How did you get it?")
 
-                Text(
-                    "How did you get it?",
-                    fontWeight = FontWeight.Bold
-                )
-
-                listOf(
-                    "Bought",
-                    "Offered",
-                    "Asked for",
-                    "Other"
-                ).forEach {
-
+                listOf("Bought", "Offered", "Asked for", "Other").forEach {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                source = it
-                            },
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
                             selected = source == it,
-                            onClick = {
-                                source = it
-                            }
+                            onClick = { source = it }
                         )
-
                         Text(it)
                     }
                 }
 
+                HorizontalDivider()
+
+                Text("Was this a morning cigarette?")
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = morning,
+                        onClick = { morning = true }
+                    )
+                    Text("Yes")
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = !morning,
+                        onClick = { morning = false }
+                    )
+                    Text("No")
+                }
+
                 OutlinedTextField(
                     value = context,
-                    onValueChange = {
-                        context = it
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = {
-                        Text("Context (optional)")
-                    }
+                    onValueChange = { context = it },
+                    label = { Text("Context (optional)") }
                 )
 
                 Text(
                     "Craving: ${
-                        if (intensity == 0)
-                            "Not rated"
-                        else
-                            "$intensity/10"
+                        if (intensity == 0) "Not rated"
+                        else "$intensity/10"
                     }"
                 )
 
                 Slider(
                     value = intensity.toFloat(),
-                    onValueChange = {
-                        intensity = it.toInt()
-                    },
+                    onValueChange = { intensity = it.toInt() },
                     valueRange = 0f..10f,
                     steps = 9
                 )
@@ -1873,20 +1861,14 @@ fun SmokeDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    save(
-                        source,
-                        context,
-                        intensity
-                    )
+                    save(source, context, intensity, morning)
                 }
             ) {
                 Text("Save")
             }
         },
         dismissButton = {
-            TextButton(
-                onClick = dismiss
-            ) {
+            TextButton(onClick = dismiss) {
                 Text("Cancel")
             }
         }
@@ -1896,68 +1878,68 @@ fun SmokeDialog(
 @Composable
 fun CravingDialog(
     dismiss: () -> Unit,
-    save: (Int, String) -> Unit
+    save: (Int, String, Boolean) -> Unit
 ) {
-    var intensity by remember {
-        mutableIntStateOf(5)
-    }
-
-    var context by remember {
-        mutableStateOf("")
-    }
+    var intensity by remember { mutableIntStateOf(5) }
+    var context by remember { mutableStateOf("") }
+    var morning by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = dismiss,
-        title = {
-            Text("I have a craving")
-        },
+        title = { Text("I have a craving") },
         text = {
             Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-
-                Text(
-                    "Intensity: $intensity/10",
-                    fontWeight = FontWeight.Bold
-                )
+                Text("Intensity: $intensity/10")
 
                 Slider(
                     value = intensity.toFloat(),
-                    onValueChange = {
-                        intensity = it.toInt()
-                    },
+                    onValueChange = { intensity = it.toInt() },
                     valueRange = 1f..10f,
                     steps = 8
                 )
 
+                Text("Is this a morning craving?")
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = morning,
+                        onClick = { morning = true }
+                    )
+                    Text("Yes")
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = !morning,
+                        onClick = { morning = false }
+                    )
+                    Text("No")
+                }
+
                 OutlinedTextField(
                     value = context,
-                    onValueChange = {
-                        context = it
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = {
-                        Text("Situation / context")
-                    }
+                    onValueChange = { context = it },
+                    label = { Text("Situation/context") }
                 )
             }
         },
         confirmButton = {
             TextButton(
                 onClick = {
-                    save(
-                        intensity,
-                        context
-                    )
+                    save(intensity, context, morning)
                 }
             ) {
                 Text("Save")
             }
         },
         dismissButton = {
-            TextButton(
-                onClick = dismiss
-            ) {
+            TextButton(onClick = dismiss) {
                 Text("Cancel")
             }
         }
