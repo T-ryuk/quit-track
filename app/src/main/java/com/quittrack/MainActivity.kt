@@ -234,7 +234,6 @@ fun QuitTrackTheme(
     MaterialTheme(
         colorScheme = colors,
         typography = Typography(
-            defaultFontFamily = SystemFontFamily,
             bodyLarge = MaterialTheme.typography.bodyLarge.copy(
                 fontSize = (16 * multiplier).sp
             ),
