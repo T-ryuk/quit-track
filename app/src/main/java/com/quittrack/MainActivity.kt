@@ -364,9 +364,6 @@ fun QuitTrackApp(
 
 @Composable
 fun AppCard(
-
-@Composable
-fun AppCard(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit
 ) {
