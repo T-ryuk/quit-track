@@ -452,33 +452,37 @@ fun TodayScreen(
                 ) {
 
                     Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(
-    horizontalAlignment = Alignment.CenterHorizontally
+    modifier = Modifier.fillMaxWidth(),
+    verticalAlignment = Alignment.CenterVertically
 ) {
-    Text(
-        "Day $day of 40",
-        style = MaterialTheme.typography.headlineSmall,
-        fontWeight = FontWeight.Bold,
-        textAlign = TextAlign.Center
-    )
+    Box(
+        modifier = Modifier.weight(1f),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                "Day $day of 40",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+
+            Text(
+                "Phase ${phaseForDay(day)} • ${phaseName(day)}",
+                color = TextMuted,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
 
     Text(
-        "Phase ${phaseForDay(day)} • ${phaseName(day)}",
-        color = TextMuted,
-        textAlign = TextAlign.Center
+        "▣",
+        fontSize = 28.sp,
+        color = QuitGreen
     )
 }
-
-                        Spacer(Modifier.weight(1f))
-
-                        Text(
-                            "▣",
-                            fontSize = 28.sp,
-                            color = QuitGreen
-                        )
-                    }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
