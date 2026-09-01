@@ -46,16 +46,16 @@ data class DailyReview(
     val entries: List<LogEntry>
 )
 
-private val QuitGreen = androidx.compose.ui.graphics.Color(0xFF216E3A)
-private val QuitGreenDark = androidx.compose.ui.graphics.Color(0xFF174D29)
-private val QuitGreenLight = androidx.compose.ui.graphics.Color(0xFFE8F2E8)
-private val QuitOrange = androidx.compose.ui.graphics.Color(0xFFF27A22)
-private val QuitOrangeLight = androidx.compose.ui.graphics.Color(0xFFFFE8D6)
-private val WarmBackground = androidx.compose.ui.graphics.Color(0xFFF9F8F4)
-private val CardWhite = androidx.compose.ui.graphics.Color(0xFFFFFFFF)
-private val TextDark = androidx.compose.ui.graphics.Color(0xFF172019)
-private val TextMuted = androidx.compose.ui.graphics.Color(0xFF66706A)
-private val BorderLight = androidx.compose.ui.graphics.Color(0xFFE0E4DF)
+private val QuitGreen = androidx.compose.ui.graphics.Color(0xFF850707)
+private val QuitGreenDark = androidx.compose.ui.graphics.Color(0xFF850707)
+private val QuitGreenLight = androidx.compose.ui.graphics.Color(0xFF121111)
+private val QuitOrange = androidx.compose.ui.graphics.Color(0xFF850707)
+private val QuitOrangeLight = androidx.compose.ui.graphics.Color(0xFF121111)
+private val WarmBackground = androidx.compose.ui.graphics.Color(0xFF000000)
+private val CardWhite = androidx.compose.ui.graphics.Color(0xFF121111)
+private val TextDark = androidx.compose.ui.graphics.Color(0xFFE6E7E8)
+private val TextMuted = androidx.compose.ui.graphics.Color(0xFFE6E7E8)
+private val BorderLight = androidx.compose.ui.graphics.Color(0xFF121111)
 
 class MainActivity : ComponentActivity() {
 
@@ -75,9 +75,7 @@ class MainActivity : ComponentActivity() {
                 loadDailyReviews = { loadDailyReviews() },
                 saveDailyReview = { saveDailyReview(it) },
                 loadFontSize = { prefs.getString("fontSize", "Medium") ?: "Medium" },
-                saveFontSize = { prefs.edit().putString("fontSize", it).apply() },
-                loadTheme = { prefs.getString("theme", "Light") ?: "Light" },
-                saveTheme = { prefs.edit().putString("theme", it).apply() }
+                saveFontSize = { prefs.edit().putString("fontSize", it).apply() }
             )
         }
     }
@@ -212,28 +210,18 @@ private fun reviewToJson(review: DailyReview): JSONObject {
 
 @Composable
 fun QuitTrackTheme(
-    theme: String,
     fontSize: String,
     content: @Composable () -> Unit
 ) {
-    val dark = theme == "Dark"
-
-    val colors = if (dark) {
-        darkColorScheme(
-            primary = androidx.compose.ui.graphics.Color(0xFF79C98C),
-            secondary = androidx.compose.ui.graphics.Color(0xFFFFA45C)
-        )
-    } else {
-        lightColorScheme(
-            primary = QuitGreen,
-            onPrimary = androidx.compose.ui.graphics.Color.White,
-            secondary = QuitOrange,
-            background = WarmBackground,
-            surface = CardWhite,
-            onBackground = TextDark,
-            onSurface = TextDark
-        )
-    }
+    val colors = darkColorScheme(
+    primary = QuitGreen,
+    onPrimary = androidx.compose.ui.graphics.Color.White,
+    secondary = QuitOrange,
+    background = WarmBackground,
+    surface = CardWhite,
+    onBackground = TextDark,
+    onSurface = TextDark
+)
 
     val multiplier = when (fontSize) {
         "Small" -> 0.9f
@@ -273,8 +261,6 @@ fun QuitTrackApp(
     loadDailyReviews: () -> List<DailyReview>,
     loadFontSize: () -> String,
     saveFontSize: (String) -> Unit,
-    loadTheme: () -> String,
-    saveTheme: (String) -> Unit,
     saveDailyReview: (DailyReview) -> Unit
 ) {
     var startDate by remember { mutableLongStateOf(loadStartDate()) }
@@ -286,7 +272,6 @@ fun QuitTrackApp(
     var reviewSaved by remember { mutableStateOf(false) }
 
     var fontSize by remember { mutableStateOf(loadFontSize()) }
-    var theme by remember { mutableStateOf(loadTheme()) }
 
     val midnight = Calendar.getInstance().apply {
         set(Calendar.HOUR_OF_DAY, 0)
@@ -313,7 +298,6 @@ fun QuitTrackApp(
     val cravings = today.count { it.type == "CRAVING" }
 
     QuitTrackTheme(
-        theme = theme,
         fontSize = fontSize
     ) {
         Scaffold(
@@ -405,11 +389,6 @@ fun QuitTrackApp(
                     onFontSizeChange = {
                         fontSize = it
                         saveFontSize(it)
-                    },
-                    theme = theme,
-                    onThemeChange = {
-                        theme = it
-                        saveTheme(it)
                     },
                     onReset = {
                         val now = Calendar.getInstance().apply {
@@ -1171,14 +1150,11 @@ fun SettingsScreen(
     entries: List<LogEntry>,
     fontSize: String,
     onFontSizeChange: (String) -> Unit,
-    theme: String,
-    onThemeChange: (String) -> Unit,
     onReset: () -> Unit,
     onImport: (Long, List<LogEntry>) -> Unit
 ) {
     var showReset by remember { mutableStateOf(false) }
     var showFontSize by remember { mutableStateOf(false) }
-    var showTheme by remember { mutableStateOf(false) }
     var showObjective by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
@@ -1410,15 +1386,6 @@ fun SettingsScreen(
                         subtitle = fontSize,
                         onClick = { showFontSize = true }
                     )
-
-                    Divider()
-
-                    SettingsRow(
-                        icon = "◐",
-                        title = "Palette / Theme",
-                        subtitle = theme,
-                        onClick = { showTheme = true }
-                    )
                 }
             }
         }
@@ -1592,45 +1559,6 @@ fun SettingsScreen(
         )
     }
 
-    if (showTheme) {
-        AlertDialog(
-            onDismissRequest = {
-                showTheme = false
-            },
-            title = {
-                Text("Palette / Theme")
-            },
-            text = {
-                Column {
-                    listOf("Light", "Dark", "System").forEach { option ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    onThemeChange(option)
-                                    showTheme = false
-                                }
-                                .padding(vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = theme == option,
-                                onClick = {
-                                    onThemeChange(option)
-                                    showTheme = false
-                                }
-                            )
-
-                            Spacer(Modifier.width(8.dp))
-
-                            Text(option)
-                        }
-                    }
-                }
-            },
-            confirmButton = {}
-        )
-    }
 
     if (showReset) {
         AlertDialog(
