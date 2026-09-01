@@ -342,23 +342,28 @@ fun QuitTrackApp(
     }
 }
 
-        if (cravingDialog) {
-    CravingDialog(
-        dismiss = { cravingDialog = false }
-    ) { intensity, context, morning ->
+               if (cravingDialog) {
+            CravingDialog(
+                dismiss = { cravingDialog = false }
+            ) { intensity, context, morning ->
 
-        entries = entries + LogEntry(
-            "CRAVING",
-            System.currentTimeMillis(),
-            intensity,
-            context = context,
-            morning = morning
-        )
+                entries = entries + LogEntry(
+                    "CRAVING",
+                    System.currentTimeMillis(),
+                    intensity,
+                    context = context,
+                    morning = morning
+                )
 
-        saveEntries(entries)
-        cravingDialog = false
+                saveEntries(entries)
+                cravingDialog = false
+            }
+        }
     }
 }
+
+@Composable
+fun AppCard(
 
 @Composable
 fun AppCard(
