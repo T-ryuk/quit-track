@@ -344,8 +344,15 @@ fun QuitTrackApp(
 
                 "Stats" -> StatsScreen(
                     Modifier.padding(pad),
-                    entries
+                    entries,
+                    onDailyReviews = { screen = "DailyReviews" }
                 )
+
+                "DailyReviews" -> DailyReviewsScreen(
+                    Modifier.padding(pad),
+                    onBack = { screen = "Stats" }
+                )
+
 
                 "Settings" -> SettingsScreen(
                     Modifier.padding(pad),
@@ -881,7 +888,8 @@ fun PlanScreen(
 @Composable
 fun StatsScreen(
     m: Modifier,
-    entries: List<LogEntry>
+    entries: List<LogEntry>,
+    onDailyReviews: () -> Unit
 ) {
     val smoked = entries.filter { it.type == "SMOKED" }
     val cravings = entries.filter { it.type == "CRAVING" }
@@ -1056,8 +1064,7 @@ fun StatsScreen(
                 title = "Daily reviews",
                 subtitle = "View your saved daily reviews",
                 icon = "📖",
-                onClick = {
-                    // We'll connect this in the next step
+                onClick = onDailyReviews
                 }
             )
         }
@@ -2133,5 +2140,52 @@ fun fmtDateTime(t: Long): String {
         "yyyy-MM-dd HH:mm",
         Locale.getDefault()
     ).format(Date(t))
+}
+@Composable
+fun DailyReviewsScreen(
+    m: Modifier,
+    onBack: () -> Unit
+) {
+    LazyColumn(
+        modifier = m.fillMaxSize(),
+        contentPadding = PaddingValues(
+            start = 20.dp,
+            end = 20.dp,
+            top = 24.dp,
+            bottom = 24.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+
+        item {
+            TextButton(onClick = onBack) {
+                Text("‹ Back")
+            }
+        }
+
+        item {
+            Text(
+                "Daily reviews",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = QuitGreen
+            )
+
+            Text(
+                "Your saved daily summaries.",
+                color = TextMuted
+            )
+        }
+
+        item {
+            AppCard {
+                Text(
+                    "No saved reviews yet.",
+                    modifier = Modifier.padding(20.dp),
+                    color = TextMuted
+                )
+            }
+        }
+    }
 }
 }
