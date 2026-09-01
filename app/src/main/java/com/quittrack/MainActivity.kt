@@ -1065,8 +1065,6 @@ fun StatsScreen(
                 subtitle = "View your saved daily reviews",
                 icon = "📖",
                 onClick = onDailyReviews
-                )
-                }
             )
         }
     }
