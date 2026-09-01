@@ -31,6 +31,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.ui.text.font.FontFamily
 
 data class LogEntry(
     val type: String,
@@ -56,6 +57,7 @@ private val CardWhite = androidx.compose.ui.graphics.Color(0xFF121111)
 private val TextDark = androidx.compose.ui.graphics.Color(0xFFE6E7E8)
 private val TextMuted = androidx.compose.ui.graphics.Color(0xFFE6E7E8)
 private val BorderLight = androidx.compose.ui.graphics.Color(0xFF121111)
+private val SystemFontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif
 
 class MainActivity : ComponentActivity() {
 
@@ -232,6 +234,7 @@ fun QuitTrackTheme(
     MaterialTheme(
         colorScheme = colors,
         typography = Typography(
+            defaultFontFamily = SystemFontFamily,
             bodyLarge = MaterialTheme.typography.bodyLarge.copy(
                 fontSize = (16 * multiplier).sp
             ),
