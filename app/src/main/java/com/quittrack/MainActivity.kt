@@ -1050,8 +1050,20 @@ fun StatsScreen(
                 }
             }
         }
+
+        item {
+            ActionCard(
+                title = "Daily reviews",
+                subtitle = "View your saved daily reviews",
+                icon = "📖",
+                onClick = {
+                    // We'll connect this in the next step
+                }
+            )
+        }
     }
 }
+
 
 @Composable
 fun StatBox(
