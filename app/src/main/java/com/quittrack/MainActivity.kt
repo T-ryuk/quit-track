@@ -454,18 +454,22 @@ fun TodayScreen(
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
-                            Text(
-                                "Day $day of 40",
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold
-                            )
+                        Column(
+    horizontalAlignment = Alignment.CenterHorizontally
+) {
+    Text(
+        "Day $day of 40",
+        style = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.Bold,
+        textAlign = TextAlign.Center
+    )
 
-                            Text(
-                                "Phase ${phaseForDay(day)} • ${phaseName(day)}",
-                                color = TextMuted
-                            )
-                        }
+    Text(
+        "Phase ${phaseForDay(day)} • ${phaseName(day)}",
+        color = TextMuted,
+        textAlign = TextAlign.Center
+    )
+}
 
                         Spacer(Modifier.weight(1f))
 
