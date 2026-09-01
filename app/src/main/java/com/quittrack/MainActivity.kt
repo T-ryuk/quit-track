@@ -322,6 +322,7 @@ fun QuitTrackApp(
                 )
             }
         }
+    )
 
      if (smokeDialog) {
     SmokeDialog(
