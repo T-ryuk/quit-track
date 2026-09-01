@@ -257,7 +257,7 @@ fun QuitTrackApp(
                     onCraving = { cravingDialog = true },
                     onEntries = { screen = "Entries" },
                     onPlan = { screen = "Plan" },
-                    onEmergency = { screen = "Emergency" }
+                    onEmergency = { screen = "Emergency" },
                     onSaveReview = { }
                 )
 
