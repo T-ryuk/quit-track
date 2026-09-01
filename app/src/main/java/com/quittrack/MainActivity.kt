@@ -269,7 +269,7 @@ fun QuitTrackApp(
     val today = entries.filter { sameDay(it.time, midnight) }
     val smoked = today.count { it.type == "SMOKED" }
     val morning = today.count {
-        it.type == "SMOKED" && hour(it.time) < 10
+        it.type == "SMOKED" && it.morning
     }
     val cravings = today.count { it.type == "CRAVING" }
 
