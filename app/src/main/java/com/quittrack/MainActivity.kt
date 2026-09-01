@@ -37,7 +37,8 @@ data class LogEntry(
     val time: Long,
     val intensity: Int = 0,
     val source: String = "",
-    val context: String = ""
+    val context: String = "",
+    val morning: Boolean = false
 )
 
 private val QuitGreen = androidx.compose.ui.graphics.Color(0xFF216E3A)
@@ -74,44 +75,46 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun loadEntries(): List<LogEntry> {
-        val a = JSONArray(prefs.getString("entries", "[]") ?: "[]")
+   private fun loadEntries(): List<LogEntry> {
+    val a = JSONArray(prefs.getString("entries", "[]") ?: "[]")
 
-        return buildList {
-            for (i in 0 until a.length()) {
-                val o = a.getJSONObject(i)
-                add(
-                    LogEntry(
-                        o.getString("type"),
-                        o.getLong("time"),
-                        o.optInt("intensity"),
-                        o.optString("source"),
-                        o.optString("context")
-                    )
+    return buildList {
+        for (i in 0 until a.length()) {
+            val o = a.getJSONObject(i)
+
+            add(
+                LogEntry(
+                    o.getString("type"),
+                    o.getLong("time"),
+                    o.optInt("intensity"),
+                    o.optString("source"),
+                    o.optString("context"),
+                    o.optBoolean("morning", false)
                 )
-            }
-        }
-    }
-
-    private fun saveEntries(entries: List<LogEntry>) {
-        val a = JSONArray()
-
-        entries.forEach { e ->
-            a.put(
-                JSONObject().apply {
-                    put("type", e.type)
-                    put("time", e.time)
-                    put("intensity", e.intensity)
-                    put("source", e.source)
-                    put("context", e.context)
-                }
             )
         }
-
-        prefs.edit().putString("entries", a.toString()).apply()
     }
 }
 
+    private fun saveEntries(entries: List<LogEntry>) {
+    val a = JSONArray()
+
+    entries.forEach { e ->
+        a.put(
+            JSONObject().apply {
+                put("type", e.type)
+                put("time", e.time)
+                put("intensity", e.intensity)
+                put("source", e.source)
+                put("context", e.context)
+                put("morning", e.morning)
+            }
+        )
+    }
+
+    prefs.edit().putString("entries", a.toString()).apply()
+}
+    
 @Composable
 fun QuitTrackTheme(
     theme: String,
