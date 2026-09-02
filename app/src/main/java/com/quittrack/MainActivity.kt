@@ -1356,7 +1356,7 @@ fun SettingsScreen(
         }
 
         item {
-            SettingsSectionTitle("APPEARANCE")
+
 
             AppCard {
                 Column {
