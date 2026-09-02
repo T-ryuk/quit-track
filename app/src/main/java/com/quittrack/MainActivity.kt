@@ -1431,7 +1431,7 @@ fun SettingsScreen(
                     SettingsRow(
                         icon = "#",
                         title = "Version",
-                        subtitle = "0.2.0",
+                        subtitle = "1.0",
                         onClick = {}
                     )
                 }
