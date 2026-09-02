@@ -75,9 +75,7 @@ class MainActivity : ComponentActivity() {
                 loadEntries = { loadEntries() },
                 saveEntries = { saveEntries(it) },
                 loadDailyReviews = { loadDailyReviews() },
-                saveDailyReview = { saveDailyReview(it) },
-                loadFontSize = { prefs.getString("fontSize", "Medium") ?: "Medium" },
-                saveFontSize = { prefs.edit().putString("fontSize", it).apply() }
+                saveDailyReview = { saveDailyReview(it) }
             )
         }
     }
@@ -212,7 +210,6 @@ private fun reviewToJson(review: DailyReview): JSONObject {
 
 @Composable
 fun QuitTrackTheme(
-    fontSize: String,
     content: @Composable () -> Unit
 ) {
     val colors = darkColorScheme(
@@ -225,31 +222,26 @@ fun QuitTrackTheme(
     onSurface = TextDark
 )
 
-    val multiplier = when (fontSize) {
-        "Small" -> 0.9f
-        "Large" -> 1.12f
-        else -> 1f
-    }
 
     MaterialTheme(
         colorScheme = colors,
         typography = Typography(
-            bodyLarge = MaterialTheme.typography.bodyLarge.copy(
-                fontSize = (16 * multiplier).sp
-            ),
-            bodyMedium = MaterialTheme.typography.bodyMedium.copy(
-                fontSize = (14 * multiplier).sp
-            ),
-            titleLarge = MaterialTheme.typography.titleLarge.copy(
-                fontSize = (22 * multiplier).sp
-            ),
-            headlineSmall = MaterialTheme.typography.headlineSmall.copy(
-                fontSize = (28 * multiplier).sp
-            ),
-            headlineMedium = MaterialTheme.typography.headlineMedium.copy(
-                fontSize = (32 * multiplier).sp
-            )
-        ),
+    bodyLarge = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = 16.sp
+    ),
+    bodyMedium = MaterialTheme.typography.bodyMedium.copy(
+        fontSize = 13.sp
+    ),
+    titleLarge = MaterialTheme.typography.titleLarge.copy(
+        fontSize = 19.sp
+    ),
+    headlineSmall = MaterialTheme.typography.headlineSmall.copy(
+        fontSize = 28.sp
+    ),
+    headlineMedium = MaterialTheme.typography.headlineMedium.copy(
+        fontSize = 32.sp
+    )
+),
         content = content
     )
 }
@@ -261,8 +253,6 @@ fun QuitTrackApp(
     loadEntries: () -> List<LogEntry>,
     saveEntries: (List<LogEntry>) -> Unit,
     loadDailyReviews: () -> List<DailyReview>,
-    loadFontSize: () -> String,
-    saveFontSize: (String) -> Unit,
     saveDailyReview: (DailyReview) -> Unit
 ) {
     var startDate by remember { mutableLongStateOf(loadStartDate()) }
@@ -272,8 +262,6 @@ fun QuitTrackApp(
     var smokeDialog by remember { mutableStateOf(false) }
     var cravingDialog by remember { mutableStateOf(false) }
     var reviewSaved by remember { mutableStateOf(false) }
-
-    var fontSize by remember { mutableStateOf(loadFontSize()) }
 
     val midnight = Calendar.getInstance().apply {
         set(Calendar.HOUR_OF_DAY, 0)
@@ -299,9 +287,7 @@ fun QuitTrackApp(
     }
     val cravings = today.count { it.type == "CRAVING" }
 
-    QuitTrackTheme(
-        fontSize = fontSize
-    ) {
+    QuitTrackTheme {
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             bottomBar = {
@@ -387,11 +373,6 @@ fun QuitTrackApp(
                     Modifier.padding(pad),
                     startDate = startDate,
                     entries = entries,
-                    fontSize = fontSize,
-                    onFontSizeChange = {
-                        fontSize = it
-                        saveFontSize(it)
-                    },
                     onReset = {
                         val now = Calendar.getInstance().apply {
                             set(Calendar.HOUR_OF_DAY, 0)
@@ -1150,13 +1131,10 @@ fun SettingsScreen(
     m: Modifier,
     startDate: Long,
     entries: List<LogEntry>,
-    fontSize: String,
-    onFontSizeChange: (String) -> Unit,
     onReset: () -> Unit,
     onImport: (Long, List<LogEntry>) -> Unit
 ) {
     var showReset by remember { mutableStateOf(false) }
-    var showFontSize by remember { mutableStateOf(false) }
     var showObjective by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
@@ -1382,12 +1360,7 @@ fun SettingsScreen(
 
             AppCard {
                 Column {
-                    SettingsRow(
-                        icon = "Aa",
-                        title = "Font size",
-                        subtitle = fontSize,
-                        onClick = { showFontSize = true }
-                    )
+                    
                 }
             }
         }
@@ -1521,45 +1494,6 @@ fun SettingsScreen(
         )
     }
 
-    if (showFontSize) {
-        AlertDialog(
-            onDismissRequest = {
-                showFontSize = false
-            },
-            title = {
-                Text("Font size")
-            },
-            text = {
-                Column {
-                    listOf("Small", "Medium", "Large").forEach { size ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    onFontSizeChange(size)
-                                    showFontSize = false
-                                }
-                                .padding(vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = fontSize == size,
-                                onClick = {
-                                    onFontSizeChange(size)
-                                    showFontSize = false
-                                }
-                            )
-
-                            Spacer(Modifier.width(8.dp))
-
-                            Text(size)
-                        }
-                    }
-                }
-            },
-            confirmButton = {}
-        )
-    }
 
 
     if (showReset) {
